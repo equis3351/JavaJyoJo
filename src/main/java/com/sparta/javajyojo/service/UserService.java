@@ -3,16 +3,21 @@ package com.sparta.javajyojo.service;
 import com.sparta.javajyojo.dto.ProfileRequestDto;
 import com.sparta.javajyojo.dto.ProfileResponseDto;
 import com.sparta.javajyojo.dto.SignUpRequestDto;
+import com.sparta.javajyojo.entity.Follow;
 import com.sparta.javajyojo.entity.PasswordHistory;
 import com.sparta.javajyojo.entity.User;
 import com.sparta.javajyojo.enums.ErrorType;
 import com.sparta.javajyojo.enums.UserRoleEnum;
 import com.sparta.javajyojo.exception.CustomException;
+import com.sparta.javajyojo.repository.FollowRepository;
 import com.sparta.javajyojo.repository.PasswordHistoryRepository;
 import com.sparta.javajyojo.repository.UserRepository;
+import com.sparta.javajyojo.repository.likedOrder.LikedOrderRepository;
+import com.sparta.javajyojo.repository.likedReview.LikedReviewRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -27,9 +32,13 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordHistoryRepository passwordHistoryRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LikedOrderRepository likedOrderRepository;
+    private final LikedReviewRepository likedReviewRepository;
+    private final FollowRepository followRepository;
 
     // ADMIN_TOKEN
-    private final String ADMIN_TOKEN = "AAABnvxRVklrnYxKZ0aHgTBcXukeZygoC";
+    @Value("~~~admin")
+    private String ADMIN_TOKEN;
 
     public ProfileResponseDto signUp(SignUpRequestDto requestDto) {
         String username = requestDto.getUsername();
@@ -74,8 +83,14 @@ public class UserService {
         user.logOut();
     }
 
+    @Transactional
     public ProfileResponseDto getProfile(Long userId) {
-        return new ProfileResponseDto(findById(userId));
+        ProfileResponseDto profileResponseDto = new ProfileResponseDto(findById(userId));
+        long ordersLikedCnt = likedOrderRepository.countOrderLikesByUserId(userId);
+        long reviewsLikedCnt = likedReviewRepository.countReviewLikesByUserId(userId);
+        profileResponseDto.updateContentLike(ordersLikedCnt, reviewsLikedCnt);
+
+        return profileResponseDto;
     }
 
     @Transactional
@@ -121,6 +136,36 @@ public class UserService {
         return userRepository.findById(id).orElseThrow(
             () -> new CustomException(ErrorType.NOT_FOUND_USER)
         );
+    }
+
+    @Transactional
+    public void followUser(Long followingUserId, User follower) {
+
+        User following = findById(followingUserId);
+
+        if (followingUserId.equals(follower.getUserId())) {
+            throw new CustomException(ErrorType.INVALID_FOLLOW_REQUEST);
+        }
+
+        if (followRepository.findByFollowerAndFollowing(follower, following).isPresent()) {
+            throw new CustomException(ErrorType.ALREADY_FOLLOWING);
+        }
+
+        Follow follow = new Follow(follower, following);
+
+        followRepository.save(follow);
+    }
+
+    @Transactional
+    public void unfollowUser(Long followingUserId, User follower) {
+
+        User following = findById(followingUserId);
+
+        if (followRepository.findByFollowerAndFollowing(follower, following).isEmpty()) {
+            throw new CustomException(ErrorType.NOT_FOUND_FOLLOW);
+        }
+
+        followRepository.delete(followRepository.findByFollowerAndFollowing(follower, following).get());
     }
 
 }

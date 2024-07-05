@@ -10,6 +10,7 @@ public class ReviewResponseDto {
     private final Long userId;
     private final String review;
     private final Long rating;
+    private final Long likesCnt;
 
     public ReviewResponseDto(Review review) {
         this.id = review.getReviewId();
@@ -17,5 +18,6 @@ public class ReviewResponseDto {
         this.userId = review.getUserId();
         this.review = review.getReview();
         this.rating = review.getRating();
+        this.likesCnt = review.getLikesCnt();
     }
 }

@@ -61,4 +61,24 @@ public class UserController {
         return ResponseEntity.ok().body(userService.update(userDetails.getUser().getUserId(), requestDto));
     }
 
+    @PostMapping("/{id}/following")
+    public ResponseEntity<String> followUser(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        userService.followUser(id, userDetails.getUser());
+
+        return ResponseEntity.ok().body("팔로우");
+    }
+
+    @DeleteMapping("/{id}/following")
+    public ResponseEntity<String> unfollowUser(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+
+        userService.unfollowUser(id, userDetails.getUser());
+
+        return ResponseEntity.ok().body("언팔로우");
+    }
+
 }
